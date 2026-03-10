@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 import { StorageKeys, getItem, setItem } from './utils/storage'
 import { OnboardingModal } from './components/OnboardingModal'
 import { InstallPrompt } from './components/InstallPrompt'
+import { Analytics } from '@vercel/analytics/react'
 
 // Lazy load pages for performance
 const BeansPage = React.lazy(() => import('./pages/Beans'))
@@ -62,6 +63,7 @@ function App() {
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
       <InstallPrompt isBlockedByOnboarding={showOnboarding} />
       <UpdatePrompt />
+      <Analytics />
       <Toaster position="top-center" toastOptions={{
         style: {
           background: 'var(--color-surface)',
