@@ -14,6 +14,7 @@ export const StorageKeys = {
   SETTINGS: 'settings',
   RATE_LIMIT: 'rate_limit',
   HAS_SEEN_ONBOARDING: 'has_seen_onboarding',
+  HAS_DISMISSED_INSTALL_PROMPT: 'has_dismissed_install_prompt',
 };
 
 /**

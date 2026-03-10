@@ -5,6 +5,7 @@ import { UpdatePrompt } from './components/UpdatePrompt'
 import { Toaster } from 'react-hot-toast'
 import { StorageKeys, getItem, setItem } from './utils/storage'
 import { OnboardingModal } from './components/OnboardingModal'
+import { InstallPrompt } from './components/InstallPrompt'
 
 // Lazy load pages for performance
 const BeansPage = React.lazy(() => import('./pages/Beans'))
@@ -59,6 +60,7 @@ function App() {
       </div>
       <BottomNav />
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
+      <InstallPrompt />
       <UpdatePrompt />
       <Toaster position="top-center" toastOptions={{
         style: {
