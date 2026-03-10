@@ -130,6 +130,30 @@ const Beans: React.FC = () => {
   if (view === 'add') {
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
+        
+        {/* Fullscreen Loading Overlay for AI Vision Scan */}
+        {loading && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(10, 10, 10, 0.8)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-primary)'
+          }}>
+            <Loader2 size={48} className="animate-spin" style={{ marginBottom: '24px' }} />
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>AI is analyzing...</h2>
+            <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem', maxWidth: '250px', textAlign: 'center' }}>
+              Extracting bean details and generating the optimal brewing recipe formula.
+            </p>
+          </div>
+        )}
+
         <button className="btn btn-glass" style={{ marginBottom: '20px', padding: '8px 16px' }} onClick={() => setView('list')}>
           <ArrowLeft size={18} /> Back
         </button>
