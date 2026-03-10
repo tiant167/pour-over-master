@@ -1,8 +1,10 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { Coffee, Timer, History } from 'lucide-react'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { Toaster } from 'react-hot-toast'
+import { StorageKeys, getItem, setItem } from './utils/storage'
+import { OnboardingModal } from './components/OnboardingModal'
 
 // Lazy load pages for performance
 const BeansPage = React.lazy(() => import('./pages/Beans'))
@@ -27,6 +29,23 @@ const BottomNav = () => (
 )
 
 function App() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      const hasSeen = await getItem<boolean>(StorageKeys.HAS_SEEN_ONBOARDING);
+      if (!hasSeen) {
+        setShowOnboarding(true);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  const handleCloseOnboarding = async () => {
+    await setItem(StorageKeys.HAS_SEEN_ONBOARDING, true);
+    setShowOnboarding(false);
+  };
+
   return (
     <BrowserRouter>
       <div className="app-container">
@@ -39,6 +58,7 @@ function App() {
         </React.Suspense>
       </div>
       <BottomNav />
+      {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
       <UpdatePrompt />
       <Toaster position="top-center" toastOptions={{
         style: {

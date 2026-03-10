@@ -13,6 +13,7 @@ export const StorageKeys = {
   HISTORY: 'history',
   SETTINGS: 'settings',
   RATE_LIMIT: 'rate_limit',
+  HAS_SEEN_ONBOARDING: 'has_seen_onboarding',
 };
 
 /**
