@@ -7,25 +7,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
-  }
-
   const { origin, tastingNotes } = req.body;
 
   const prompt =
-    `Aesthetic top-down pour-over coffee brewing photo, ${origin || 'specialty'} coffee origin, ` +
-    `moody cinematic lighting, rich dark background, coffee drip mid-pour, ` +
-    `flavor notes of ${Array.isArray(tastingNotes) && tastingNotes.length > 0 ? tastingNotes.join(', ') : 'chocolate and fruit'}, ` +
-    `photorealistic, high contrast, award-winning food photography`;
+    `Aesthetic single cup top-down pour-over coffee brewing photo, ${origin || 'specialty'} coffee origin, moody cinematic lighting, rich dark background, coffee drip mid-pour, flavor notes of ${Array.isArray(tastingNotes) && tastingNotes.length > 0 ? tastingNotes.join(', ') : 'chocolate and fruit'}, photorealistic, high contrast, award-winning food photography`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-flash-image-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseModalities: ['IMAGE', 'TEXT'],
-      }
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
     const parts = response.candidates?.[0]?.content?.parts || [];

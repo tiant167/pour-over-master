@@ -113,7 +113,7 @@ const Beans: React.FC = () => {
               toast.dismiss(t.id);
               await deleteBean(id);
               loadBeans();
-              toast.success('Bean deleted');
+              setTimeout(() => toast.success('Bean deleted', { duration: 3000 }), 100);
             }}
           >Delete</button>
         </div>

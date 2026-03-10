@@ -4,11 +4,12 @@ import { getBeans } from '../utils/beanService';
 import type { Bean } from '../utils/beanService';
 import { suggestRecipe } from '../utils/suggestions';
 import type { BrewRecipe } from '../utils/suggestions';
-import { Play, Pause, Square, ChevronRight, Droplet, Thermometer, Info, Share2, X } from 'lucide-react';
+import { Play, Pause, Square, ChevronRight, Droplet, Thermometer, Info, Share2 } from 'lucide-react';
 import { setItem, StorageKeys, getItem } from '../utils/storage';
 import { BrewChart } from '../components/BrewChart';
 import { toJpeg } from 'html-to-image';
 import { generateAIImage } from '../utils/ai';
+import { QRCodeSVG } from 'qrcode.react';
 
 type BrewState = 'setup' | 'countdown' | 'active' | 'finished';
 
@@ -30,7 +31,7 @@ const Brew: React.FC = () => {
   
   // AIGC Sharing state
   const [aigcImageUrl, setAigcImageUrl] = useState<string>('');
-  const [showShareModal, setShowShareModal] = useState(false);
+
   const [isGeneratingShare, setIsGeneratingShare] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +41,16 @@ const Brew: React.FC = () => {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     audioContextRef.current = new AudioContext();
   }, []);
+
+  // Automatically generate background image once finished
+  useEffect(() => {
+    const currentBean = beans.find(b => b.id === selectedBeanId);
+    if (brewState === 'finished' && currentBean && recipe && !aigcImageUrl) {
+      generateAIImage(currentBean.origin || 'Unknown Origin', currentBean.tastingNotes || []).then(url => {
+        if (url) setAigcImageUrl(url);
+      }).catch(err => console.error("Failed to generate AI image:", err));
+    }
+  }, [brewState, selectedBeanId, beans, recipe, aigcImageUrl]);
 
   const loadBeans = async () => {
     const b = await getBeans();
@@ -352,99 +363,118 @@ const Brew: React.FC = () => {
 
   if (brewState === 'finished') {
     const currentBean = beans.find(b => b.id === selectedBeanId);
+    
     return (
-      <div className="animate-fade-in" style={{ textAlign: 'center', padding: '10px 10px 40px 10px' }}>
-        <h2 style={{ color: 'var(--color-success)', marginBottom: '10px' }}>Brew Complete!</h2>
-        <p>Enjoy your {(recipe?.title.split(' - ')[1]) || 'coffee'}.</p>
+      <div className="animate-fade-in" style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        padding: '20px 10px 40px 10px',
+        minHeight: '100%' 
+      }}>
         
-        <div className="glass-panel" style={{ padding: '20px', margin: '20px 0', textAlign: 'left' }}>
-           <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>Brewing Curve</h3>
-           <BrewChart recipe={recipe!} height="220px" />
+        {/* The Actual Share Card that will be snapshotted */}
+        <div ref={shareCardRef} style={{
+          width: '100%', maxWidth: '380px',
+          borderRadius: '24px',
+          background: 'var(--color-surface)',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+        }}>
+           {/* 1. Header Image Section (AIGC Output) */}
+           {aigcImageUrl ? (
+             <div style={{
+               width: '100%',
+               height: '240px',
+               position: 'relative',
+               overflow: 'hidden',
+               flexShrink: 0
+             }}>
+                {/* Explicit IMG tag is dramatically more reliable for html-to-image serialization than unquoted CSS backgroundImage */}
+                <img 
+                  src={aigcImageUrl} 
+                  alt="Cosmic Coffee" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                />
+                {/* Soft gradient overlay so text doesn't completely disappear on bright images */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to bottom, transparent, var(--color-surface))' }}></div>
+             </div>
+           ) : (
+             <div style={{ width: '100%', height: '180px', background: 'var(--color-surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+               <div className="spinner"></div>
+             </div>
+           )}
+           
+           {/* 2. Content Section */}
+           <div style={{ padding: '0 24px 24px 24px', flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '5px' }}>
+                 <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.5rem' }}>{recipe?.title.split(' - ')[0]}</h2>
+                 <div style={{ color: 'var(--color-success)', fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 8px', background: 'rgba(74, 222, 128, 0.1)', borderRadius: '12px' }}>
+                    Complete
+                 </div>
+              </div>
+              
+              <h3 style={{ margin: '0 0 24px 0', color: 'var(--color-primary)', fontWeight: '500', fontSize: '1rem' }}>{currentBean?.name} • {currentBean?.origin}</h3>
+              
+              {/* Brew Data Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '16px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>Ratio</div>
+                  <div style={{ color: 'var(--color-text)', fontWeight: 'bold' }}>1:{recipe?.ratio}</div>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>Temp</div>
+                  <div style={{ color: 'var(--color-text)', fontWeight: 'bold' }}>{recipe?.temperature}°C</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>Time</div>
+                  <div style={{ color: 'var(--color-text)', fontWeight: 'bold' }}>{formatTime(time)}</div>
+                </div>
+              </div>
+
+              {/* Chart */}
+              <div style={{ height: '120px', margin: '0 -10px', marginBottom: '16px' }}>
+                <BrewChart recipe={recipe!} height="100%" />
+              </div>
+              
+              {/* 3. Footer with QR Code */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: 'auto' }}>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>Pour-Over Master</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Scan to brew with me</div>
+                 </div>
+                 <div style={{ background: '#fff', padding: '6px', borderRadius: '8px', flexShrink: 0, display: 'flex' }}>
+                    <QRCodeSVG 
+                      value={window.location.origin} 
+                      size={46} 
+                      level="H"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                    />
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '12px', marginTop: '24px', width: '100%', maxWidth: '380px' }}>
+           <button className="btn btn-glass" style={{ flex: 1 }} onClick={() => { setBrewState('setup'); setTime(0); }}>
+             Brew Another
+           </button>
+           <button 
+             className="btn btn-primary" 
+             style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
+             onClick={handleShareClick}
+             disabled={isGeneratingShare}
+           >
+             {isGeneratingShare ? 'Generating...' : <><Share2 size={18} /> Share Profile</>}
+           </button>
         </div>
         
-        <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-          <button className="btn btn-glass" style={{ flex: 1 }} onClick={() => { setBrewState('setup'); setTime(0); }}>
-            Brew Another
-          </button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowShareModal(true)}>
-            <Share2 size={18} /> Share Result
-          </button>
-        </div>
-
-        {/* Share Modal */}
-        {showShareModal && (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            zIndex: 100, display: 'flex', flexDirection: 'column',
-            justifyContent: 'center', alignItems: 'center', padding: '20px',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <button className="btn-icon btn-glass" style={{ position: 'absolute', top: '20px', right: '20px', padding: '10px' }} onClick={() => setShowShareModal(false)}>
-              <X size={24} />
-            </button>
-            
-            {/* The Actual Share Card that will be snapshotted */}
-            <div ref={shareCardRef} style={{
-              width: '100%', maxWidth: '350px',
-              borderRadius: '24px',
-              background: '#121212',
-              position: 'relative',
-              overflow: 'hidden',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-            }}>
-               {/* AIGC Background Image */}
-               {aigcImageUrl && (
-                 <div style={{
-                   position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                   backgroundImage: `url(${aigcImageUrl})`,
-                   backgroundSize: 'cover',
-                   backgroundPosition: 'center',
-                   opacity: 0.4,
-                   zIndex: 0
-                 }} />
-               )}
-               
-               {/* Glass Overlay for Content */}
-               <div style={{ position: 'relative', zIndex: 1, padding: '30px 20px', background: 'linear-gradient(to bottom, rgba(18,18,18,0.3) 0%, rgba(18,18,18,0.9) 100%)' }}>
-                  <h2 style={{ margin: '0 0 5px 0', color: '#fff', fontSize: '1.5rem', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{recipe?.title.split(' - ')[0]}</h2>
-                  <h3 style={{ margin: '0 0 20px 0', color: 'var(--color-primary)', fontWeight: '500', fontSize: '1rem' }}>{currentBean?.name} • {currentBean?.origin}</h3>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px', background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem' }}>Ratio</div>
-                      <div style={{ color: '#fff', fontWeight: 'bold' }}>1:{recipe?.ratio} ({recipe ? (recipe.coffeeWeight * recipe.ratio) : 0}g)</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem' }}>Temp</div>
-                      <div style={{ color: '#fff', fontWeight: 'bold' }}>{recipe?.temperature}°C</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem' }}>Time</div>
-                      <div style={{ color: '#fff', fontWeight: 'bold' }}>{formatTime(time)}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ height: '180px', margin: '0 -10px' }}>
-                    <BrewChart recipe={recipe!} height="100%" />
-                  </div>
-                  
-                  <div style={{ textAlign: 'center', marginTop: '20px', color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', letterSpacing: '1px' }}>
-                    POUR-OVER COFFEE APP
-                  </div>
-               </div>
-            </div>
-
-            <button 
-               className="btn btn-primary" 
-               style={{ width: '100%', maxWidth: '350px', marginTop: '20px' }} 
-               onClick={handleShareClick}
-               disabled={isGeneratingShare}
-            >
-              {isGeneratingShare ? 'Generating...' : 'Share to Instagram / Friends'}
-            </button>
-          </div>
-        )}
       </div>
     );
   }
