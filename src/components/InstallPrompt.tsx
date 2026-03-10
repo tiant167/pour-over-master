@@ -85,10 +85,11 @@ export const InstallPrompt: React.FC<Props> = ({ isBlockedByOnboarding }) => {
       <div className="animate-fade-in" style={{
         position: 'fixed',
         bottom: '80px', // Just above bottom nav
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'calc(100% - 40px)',
+        left: '20px',
+        right: '20px',
+        margin: '0 auto',
         maxWidth: '380px',
+        boxSizing: 'border-box',
         padding: '16px',
         background: 'rgba(30, 30, 30, 0.85)',
         backdropFilter: 'blur(12px)',
@@ -128,10 +129,11 @@ export const InstallPrompt: React.FC<Props> = ({ isBlockedByOnboarding }) => {
       <div className="animate-fade-in" style={{
         position: 'fixed',
         bottom: '80px', // Just above bottom nav
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'calc(100% - 40px)',
+        left: '20px',
+        right: '20px',
+        margin: '0 auto',
         maxWidth: '380px',
+        boxSizing: 'border-box',
         padding: '16px',
         background: 'rgba(30, 30, 30, 0.85)',
         backdropFilter: 'blur(12px)',
