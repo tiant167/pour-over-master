@@ -1,5 +1,9 @@
 # Pour-Over Master ☕️✨
 
+<div align="center">
+  <img src="public/introduce.png" alt="Pour-Over Master App Interface" width="100%" />
+</div>
+
 **Pour-Over Master** is not just another coffee timer. It is a next-generation, AI-native Progressive Web App (PWA) designed to completely reimagine the pour-over coffee experience for modern baristas and coffee enthusiasts.
 
 ## 🌟 Why is it different? (The "AI-First" Approach)
