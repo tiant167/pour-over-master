@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { origin, tastingNotes } = req.body;
 
   const prompt =
-    `Aesthetic single cup top-down pour-over coffee brewing photo, ${origin || 'specialty'} coffee origin, moody cinematic lighting, rich dark background, coffee drip mid-pour, flavor notes of ${Array.isArray(tastingNotes) && tastingNotes.length > 0 ? tastingNotes.join(', ') : 'chocolate and fruit'}, photorealistic, high contrast, award-winning food photography`;
+    `A breathtaking, cinematic landscape photography of ${origin || 'a beautiful high-altitude coffee-growing region'}, featuring iconic geographical landmarks, stunning nature, or cultural essence of this specific origin. The scene should be highly aesthetic, moody, and atmospheric, visually reflecting the abstract feeling of tasting notes like ${Array.isArray(tastingNotes) && tastingNotes.length > 0 ? tastingNotes.join(', ') : 'floral and fruit'}. Photorealistic, National Geographic style landscape, rich colors, deep contrast. NO text or words in the image.`;
 
   try {
     const response = await ai.models.generateContent({
