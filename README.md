@@ -31,7 +31,7 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
 - **Styling:** Vanilla CSS (Glassmorphism UI, Dark Theme)
 - **Data Persistence:** IndexedDB via `localforage`
 - **PWA Capabilities:** `vite-plugin-pwa` (Service Workers, Manifest, Auto-Updates)
-- **AI Engine:** Google Gemini SDK (`gemini-2.5-flash` for vision/text, `gemini-3.1-flash-image-preview` for image generation)
+- **AI Engine:** Google Gemini SDK (`gemini-3.1-flash-lite-preview` for vision/text, `gemini-3.1-flash-image-preview` for image generation)
 - **Backend / Deployment:** Vercel Serverless Functions (`api/` directory)
 
 ## 💻 Local Development
