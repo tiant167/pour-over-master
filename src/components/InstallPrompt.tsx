@@ -11,7 +11,11 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export const InstallPrompt: React.FC = () => {
+interface Props {
+  isBlockedByOnboarding: boolean;
+}
+
+export const InstallPrompt: React.FC<Props> = ({ isBlockedByOnboarding }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -71,7 +75,7 @@ export const InstallPrompt: React.FC = () => {
   };
 
   // If already installed, or user dismissed it, don't show anything
-  if (isStandalone || hasDismissed) {
+  if (isStandalone || hasDismissed || isBlockedByOnboarding) {
     return null;
   }
 

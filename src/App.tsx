@@ -60,7 +60,7 @@ function App() {
       </div>
       <BottomNav />
       {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
-      <InstallPrompt />
+      <InstallPrompt isBlockedByOnboarding={showOnboarding} />
       <UpdatePrompt />
       <Toaster position="top-center" toastOptions={{
         style: {
