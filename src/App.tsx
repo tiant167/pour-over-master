@@ -7,6 +7,7 @@ import { StorageKeys, getItem, setItem } from './utils/storage'
 import { OnboardingModal } from './components/OnboardingModal'
 import { InstallPrompt } from './components/InstallPrompt'
 import { Analytics } from '@vercel/analytics/react'
+import { DesktopLanding } from './components/DesktopLanding'
 
 // Lazy load pages for performance
 const BeansPage = React.lazy(() => import('./pages/Beans'))
@@ -30,10 +31,20 @@ const BottomNav = () => (
   </nav>
 )
 
+// Detect if the user is on a mobile/tablet device
+const isMobileDevice = () => {
+  return /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent) ||
+    window.innerWidth < 768;
+};
+
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
+    // Check if it's a desktop device
+    setIsDesktop(!isMobileDevice());
+
     const checkOnboarding = async () => {
       const hasSeen = await getItem<boolean>(StorageKeys.HAS_SEEN_ONBOARDING);
       if (!hasSeen) {
@@ -47,6 +58,16 @@ function App() {
     await setItem(StorageKeys.HAS_SEEN_ONBOARDING, true);
     setShowOnboarding(false);
   };
+
+  // Show a beautiful desktop marketing page for non-mobile visitors
+  if (isDesktop) {
+    return (
+      <BrowserRouter>
+        <Analytics />
+        <DesktopLanding />
+      </BrowserRouter>
+    );
+  }
 
   return (
     <BrowserRouter>
