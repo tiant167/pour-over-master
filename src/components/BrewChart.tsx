@@ -9,6 +9,7 @@ import {
   Tooltip,
   Filler,
 } from 'chart.js';
+import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import type { BrewRecipe } from '../utils/suggestions';
 
@@ -17,9 +18,10 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 interface BrewChartProps {
   recipe: BrewRecipe;
   height?: string;
+  disableAnimation?: boolean;
 }
 
-export const BrewChart: React.FC<BrewChartProps> = ({ recipe, height = '200px' }) => {
+export const BrewChart: React.FC<BrewChartProps> = ({ recipe, height = '200px', disableAnimation = false }) => {
   const generateChartData = (r: BrewRecipe) => {
     let accTime = 0;
     let accWeight = 0;
@@ -51,9 +53,10 @@ export const BrewChart: React.FC<BrewChartProps> = ({ recipe, height = '200px' }
     };
   };
 
-  const chartOptions = {
+  const chartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: disableAnimation ? false : { duration: 400 },
     plugins: { tooltip: { enabled: true }, legend: { display: false } },
     scales: {
       x: { grid: { color: 'rgba(255,255,255,0.05)' } },
