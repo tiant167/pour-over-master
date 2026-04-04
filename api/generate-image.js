@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { origin, tastingNotes } = req.body;
 
   const prompt =
-    `A breathtaking, cinematic landscape photography of ${origin || 'a beautiful high-altitude coffee-growing region'}, featuring iconic geographical landmarks, stunning nature, or cultural essence of this specific origin. The scene should be highly aesthetic, moody, and atmospheric, visually reflecting the abstract feeling of tasting notes like ${Array.isArray(tastingNotes) && tastingNotes.length > 0 ? tastingNotes.join(', ') : 'floral and fruit'}. Photorealistic, National Geographic style landscape, rich colors, deep contrast. NO text or words in the image.`;
+    `A dreamy, ethereal watercolor painting inspired by ${Array.isArray(tastingNotes) && tastingNotes.length > 0 ? tastingNotes.join(', ') : 'floral, citrus, honey'} notes. Soft color washes blending into each other, abstract fluid shapes suggesting the essence of these flavors rather than literal objects. Delicate pastel gradients, gentle brushstrokes bleeding into the paper, a sense of floating and lightness. The mood is serene, poetic, and contemplative. NO text, NO realistic objects, pure abstract emotion.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -30,6 +30,8 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[generate-image] Error:', error);
+    console.error('[generate-image] Error stack:', error.stack);
+    console.error('[generate-image] Request body:', { origin, tastingNotes });
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
