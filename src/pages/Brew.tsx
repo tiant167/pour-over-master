@@ -432,9 +432,10 @@ const Brew: React.FC = () => {
         img.style.cssText = computedStyle.cssText;
         img.style.width = computedStyle.width;
         img.style.height = computedStyle.height;
-        if (canvas.parentNode) {
-          canvas.parentNode.replaceChild(img, canvas);
-          canvasReplacements.push({ parent: canvas.parentNode, canvas, img });
+        const parent = canvas.parentNode;
+        if (parent) {
+          parent.replaceChild(img, canvas);
+          canvasReplacements.push({ parent, canvas, img });
         }
       });
 
