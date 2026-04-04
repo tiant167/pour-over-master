@@ -415,7 +415,7 @@ const Brew: React.FC = () => {
       await Promise.all(
         Array.from(images).map(img => {
           if (img.complete) return Promise.resolve();
-          return new Promise<void>((resolve, reject) => {
+          return new Promise<void>((resolve) => {
             img.onload = () => resolve();
             img.onerror = () => resolve(); // Skip failed images
             setTimeout(() => resolve(), 5000); // 5s timeout
