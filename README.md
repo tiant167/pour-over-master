@@ -14,7 +14,7 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
 
 1. **Zero Data Entry (Vision AI):** Instead of typing out origin, altitude, and processing methods, simply **take a photo** of your coffee bean bag. Gemini 2.5 Flash Vision instantly reads the label, extracts the roast level, tasting notes, and origin.
 2. **Generative Recipes:** You don't search for recipes anymore. The AI acts as a digital World Barista Champion. Based on the specific density and solubility characteristics of your bean (e.g., Light Roast Washed Ethiopian vs. Dark Roast Natural Brazilian), the AI **generates a mathematically optimized recipe formula on the fly**—calculating the perfect bloom time, water ratios, and pouring intervals.
-3. **Aesthetic Sharing:** After a successful brew, the app uses Gemini Imagen 3 to generate a stunning, photorealistic, cinematic background image based on the origin and tasting notes of your coffee, assembling a beautiful "Coffee Card" ready for social media sharing.
+3. **Aesthetic Sharing:** After a successful brew, the app uses Gemini Imagen 3 to generate a dreamy, ethereal watercolor painting inspired by the tasting notes of your coffee, creating an abstract and artistic "Coffee Card" ready for social media sharing.
 
 ## 🚀 Key Features
 

@@ -113,8 +113,8 @@ All AI interactions happen through serverless functions to protect API keys.
 - **AI Model**: gemini-3.1-flash-lite-preview (text)
 
 #### `/api/generate-image.js`
-- **Purpose**: Generate origin landscape images for share cards
-- **Input**: Origin country, tasting notes
+- **Purpose**: Generate abstract watercolor artwork for share cards based on tasting notes
+- **Input**: Tasting notes (flavors like floral, citrus, honey)
 - **Output**: Base64-encoded JPEG image
 - **AI Model**: gemini-3.1-flash-image-preview
 
