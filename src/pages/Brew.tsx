@@ -473,7 +473,7 @@ const Brew: React.FC = () => {
       console.error('Share failed', err);
       // Restore canvases even if there's an error
       canvasReplacements.forEach(({ parent, canvas, img }) => {
-        if (parent.contains(img)) {
+        if (parent?.contains(img)) {
           parent.replaceChild(canvas, img);
         }
       });
@@ -531,9 +531,9 @@ const Brew: React.FC = () => {
            )}
            
            {/* 2. Content Section */}
-           <div style={{ padding: '0 24px 24px 24px', flex: 1 }}>
+           <div style={{ padding: '20px 24px 24px 24px', flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '5px' }}>
-                 <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.5rem' }}>{recipe?.title.split(' - ')[0]}</h2>
+                 <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.5rem', lineHeight: 1.2 }}>{recipe?.title.split(' - ')[0]}</h2>
                  <div style={{ color: 'var(--color-success)', fontSize: '0.8rem', fontWeight: 'bold', padding: '4px 8px', background: 'rgba(74, 222, 128, 0.1)', borderRadius: '12px' }}>
                     Complete
                  </div>
@@ -660,7 +660,10 @@ const Brew: React.FC = () => {
       <div style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         
         <h3 style={{ color: 'var(--color-primary)', margin: '0 0 5px 0' }}>{currentStep?.name || 'Done'}</h3>
-        <p style={{ color: 'var(--color-primary)', fontSize: '1.2rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>Target: {currentTargetWeight.toFixed(1)}g</p>
+        <div style={{ margin: '0 0 5px 0' }}>
+          <span style={{ color: 'var(--color-primary)', fontSize: '1.5rem', fontWeight: 'bold' }}>{currentTargetWeight.toFixed(1)}g</span>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: '1rem' }}> / {currentStep?.targetWeight}g</span>
+        </div>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '40px' }}>{pourRateDisplay}</p>
         
         {/* Timer Circle */}
