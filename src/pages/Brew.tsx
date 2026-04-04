@@ -30,6 +30,7 @@ const TEST_RECIPE: BrewRecipe = {
 
 // Check if running in development mode
 const isDevelopment = import.meta.env.DEV;
+const SHARE_ASSET_TIMEOUT_MS = 5000;
 
 const Brew: React.FC = () => {
   const location = useLocation();
@@ -188,6 +189,105 @@ const Brew: React.FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const waitForImageReady = async (img: HTMLImageElement, label: string) => {
+    const isLoaded = () => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0;
+
+    if (!isLoaded()) {
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          img.removeEventListener('load', onLoad);
+          img.removeEventListener('error', onError);
+          window.clearTimeout(timeoutId);
+          resolve();
+        };
+        const onLoad = () => finish();
+        const onError = () => {
+          console.warn(`[share] ${label} failed to load`, {
+            currentSrc: img.currentSrc || img.src,
+          });
+          finish();
+        };
+        const timeoutId = window.setTimeout(() => {
+          console.warn(`[share] ${label} timed out waiting for load`, {
+            currentSrc: img.currentSrc || img.src,
+            complete: img.complete,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+          });
+          finish();
+        }, SHARE_ASSET_TIMEOUT_MS);
+
+        img.addEventListener('load', onLoad, { once: true });
+        img.addEventListener('error', onError, { once: true });
+      });
+    }
+
+    if (typeof img.decode === 'function') {
+      try {
+        await img.decode();
+      } catch (error) {
+        console.warn(`[share] ${label} decode failed`, error);
+      }
+    }
+  };
+
+  const waitForImagesToDecode = async (root: HTMLElement, label: string) => {
+    const images = Array.from(root.querySelectorAll('img'));
+    await Promise.all(images.map((img, index) => waitForImageReady(img, `${label}[${index}]`)));
+  };
+
+  const waitForNextPaint = async (frames = 2) => {
+    for (let i = 0; i < frames; i += 1) {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
+    }
+  };
+
+  const replaceCanvasesWithImages = async (root: HTMLElement) => {
+    const canvasReplacements: { parent: HTMLElement; canvas: HTMLCanvasElement; img: HTMLImageElement }[] = [];
+    const generatedChartImages: HTMLImageElement[] = [];
+    const canvases = Array.from(root.querySelectorAll('canvas'));
+
+    canvases.forEach((canvas, index) => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+
+      const img = document.createElement('img');
+      img.src = canvas.toDataURL('image/png');
+      img.alt = `Share chart ${index + 1}`;
+      img.decoding = 'sync';
+      const computedStyle = window.getComputedStyle(canvas);
+      img.style.cssText = computedStyle.cssText;
+      img.style.width = computedStyle.width;
+      img.style.height = computedStyle.height;
+      img.style.display = computedStyle.display === 'inline' ? 'block' : computedStyle.display;
+
+      parent.replaceChild(img, canvas);
+      canvasReplacements.push({ parent, canvas, img });
+      generatedChartImages.push(img);
+    });
+
+    await Promise.all(
+      generatedChartImages.map((img, index) => waitForImageReady(img, `chartImage[${index}]`))
+    );
+
+    return canvasReplacements;
+  };
+
+  const restoreCanvasReplacements = (
+    canvasReplacements: { parent: HTMLElement; canvas: HTMLCanvasElement; img: HTMLImageElement }[]
+  ) => {
+    canvasReplacements.forEach(({ parent, canvas, img }) => {
+      if (parent.contains(img)) {
+        parent.replaceChild(canvas, img);
+      }
+    });
   };
 
   const handleStart = () => {
@@ -407,42 +507,18 @@ const Brew: React.FC = () => {
     if (!shareCardRef.current) return;
     setIsGeneratingShare(true);
 
-    const canvasReplacements: { parent: Node; canvas: HTMLCanvasElement; img: HTMLImageElement }[] = [];
+    let canvasReplacements: { parent: HTMLElement; canvas: HTMLCanvasElement; img: HTMLImageElement }[] = [];
 
     try {
-      // 1. Wait for all images to load completely
-      const images = shareCardRef.current.querySelectorAll('img');
-      await Promise.all(
-        Array.from(images).map(img => {
-          if (img.complete) return Promise.resolve();
-          return new Promise<void>((resolve) => {
-            img.onload = () => resolve();
-            img.onerror = () => resolve(); // Skip failed images
-            setTimeout(() => resolve(), 5000); // 5s timeout
-          });
-        })
-      );
+      const root = shareCardRef.current;
+      console.log('[share] Preparing share capture');
 
-      // 2. Convert canvas elements to images (Chart.js uses canvas)
-      const canvases = shareCardRef.current.querySelectorAll('canvas');
-      canvases.forEach(canvas => {
-        const img = document.createElement('img');
-        img.src = canvas.toDataURL('image/png');
-        const computedStyle = window.getComputedStyle(canvas);
-        img.style.cssText = computedStyle.cssText;
-        img.style.width = computedStyle.width;
-        img.style.height = computedStyle.height;
-        const parent = canvas.parentNode;
-        if (parent) {
-          parent.replaceChild(img, canvas);
-          canvasReplacements.push({ parent, canvas, img });
-        }
-      });
+      await waitForImagesToDecode(root, 'shareCardImage');
+      await waitForNextPaint(2);
 
-      // 3. Small delay to ensure DOM updates
-      await new Promise(resolve => setTimeout(resolve, 100));
+      canvasReplacements = await replaceCanvasesWithImages(root);
+      await waitForNextPaint(2);
 
-      // 4. Generate the share image
       const dataUrl = await toJpeg(shareCardRef.current, {
         quality: 0.95,
         pixelRatio: 2,
@@ -450,12 +526,8 @@ const Brew: React.FC = () => {
         cacheBust: true,
       });
 
-      // 5. Restore canvas elements
-      canvasReplacements.forEach(({ parent, canvas, img }) => {
-        parent.replaceChild(canvas, img);
-      });
+      restoreCanvasReplacements(canvasReplacements);
 
-      // 6. Share or download
       if (navigator.share) {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -472,12 +544,21 @@ const Brew: React.FC = () => {
       }
     } catch (err) {
       console.error('Share failed', err);
-      // Restore canvases even if there's an error
-      canvasReplacements.forEach(({ parent, canvas, img }) => {
-        if (parent?.contains(img)) {
-          parent.replaceChild(canvas, img);
-        }
+      console.error('[share] Share diagnostics', {
+        imageStates: shareCardRef.current
+          ? Array.from(shareCardRef.current.querySelectorAll('img')).map((img, index) => ({
+              index,
+              complete: img.complete,
+              naturalWidth: img.naturalWidth,
+              naturalHeight: img.naturalHeight,
+              currentSrc: img.currentSrc || img.src,
+            }))
+          : [],
+        hasRunningAnimations: shareCardRef.current
+          ? shareCardRef.current.getAnimations({ subtree: true }).length > 0
+          : false,
       });
+      restoreCanvasReplacements(canvasReplacements);
     } finally {
       setIsGeneratingShare(false);
     }
@@ -487,7 +568,7 @@ const Brew: React.FC = () => {
     const currentBean = beans.find(b => b.id === selectedBeanId);
     
     return (
-      <div className="animate-fade-in" style={{ 
+      <div style={{ 
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center', 
@@ -560,7 +641,7 @@ const Brew: React.FC = () => {
 
               {/* Chart */}
               <div style={{ height: '120px', margin: '0 -10px', marginBottom: '16px' }}>
-                <BrewChart recipe={recipe!} height="100%" />
+                <BrewChart recipe={recipe!} height="100%" disableAnimation />
               </div>
               
               {/* 3. Footer with QR Code */}
@@ -593,7 +674,7 @@ const Brew: React.FC = () => {
              onClick={handleShareClick}
              disabled={isGeneratingShare}
            >
-             {isGeneratingShare ? 'Generating...' : <><Share2 size={18} /> Share Profile</>}
+             {isGeneratingShare ? 'Preparing share...' : <><Share2 size={18} /> Share Profile</>}
            </button>
         </div>
         
