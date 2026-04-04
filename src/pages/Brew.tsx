@@ -13,12 +13,31 @@ import { QRCodeSVG } from 'qrcode.react';
 
 type BrewState = 'setup' | 'countdown' | 'active' | 'finished';
 
+// Quick test recipe for development (10 seconds total)
+const TEST_RECIPE: BrewRecipe = {
+  title: 'Quick Test Brew',
+  profile: 'Fast 10-second test recipe for development.',
+  ratio: 15,
+  temperature: 93,
+  grindSize: 'Medium',
+  coffeeWeight: 15,
+  steps: [
+    { name: 'Bloom', targetWeight: 30, duration: 3, pouringDuration: 1, description: 'Quick bloom pour' },
+    { name: 'Pour', targetWeight: 150, duration: 4, pouringDuration: 2, description: 'Fast main pour' },
+    { name: 'Wait', targetWeight: 225, duration: 3, pouringDuration: 0, description: 'Short draw down' },
+  ]
+};
+
+// Check if running in development mode
+const isDevelopment = import.meta.env.DEV;
+
 const Brew: React.FC = () => {
   const location = useLocation();
   const [beans, setBeans] = useState<Bean[]>([]);
   const [selectedBeanId, setSelectedBeanId] = useState<string>(location.state?.autoSelectBeanId || '');
   const [recipe, setRecipe] = useState<BrewRecipe | null>(null);
   const [coffeeWeight, setCoffeeWeight] = useState<number>(15);
+  const [isTestMode, setIsTestMode] = useState<boolean>(false);
   
   const [brewState, setBrewState] = useState<BrewState>('setup');
   const [countdown, setCountdown] = useState(3);
@@ -55,10 +74,13 @@ const Brew: React.FC = () => {
   const loadBeans = async () => {
     const b = await getBeans();
     setBeans(b);
-    if (b.length > 0) {
+    if (isTestMode) {
+      // Use quick test recipe in test mode
+      setRecipe(TEST_RECIPE);
+    } else if (b.length > 0) {
       const autoId = location.state?.autoSelectBeanId;
       const targetBean = autoId ? b.find(bean => bean.id === autoId) || b[0] : b[0];
-      
+
       setSelectedBeanId(targetBean.id!);
       setRecipe(suggestRecipe(targetBean, coffeeWeight));
     }
@@ -245,39 +267,87 @@ const Brew: React.FC = () => {
   if (brewState === 'setup') {
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '30px' }}>
-        <h2 style={{ color: 'var(--color-primary)' }}>Setup Brew</h2>
-        
-        {beans.length === 0 ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ color: 'var(--color-primary)', margin: 0 }}>Setup Brew</h2>
+          {isDevelopment && (
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.85rem',
+              color: isTestMode ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              cursor: 'pointer',
+              padding: '6px 12px',
+              background: isTestMode ? 'rgba(212, 163, 115, 0.1)' : 'transparent',
+              borderRadius: '20px',
+              border: `1px solid ${isTestMode ? 'var(--color-primary)' : 'var(--color-border)'}`,
+              transition: 'all 0.2s ease'
+            }}>
+              <input
+                type="checkbox"
+                checked={isTestMode}
+                onChange={(e) => {
+                  setIsTestMode(e.target.checked);
+                  // Reload recipe when toggling test mode
+                  if (e.target.checked) {
+                    setRecipe(TEST_RECIPE);
+                  } else if (beans.length > 0) {
+                    const b = beans.find(bean => bean.id === selectedBeanId) || beans[0];
+                    setRecipe(suggestRecipe(b, coffeeWeight));
+                  }
+                }}
+                style={{ display: 'none' }}
+              />
+              <span style={{ fontWeight: isTestMode ? '600' : '400' }}>⚡ Test Mode</span>
+            </label>
+          )}
+        </div>
+
+        {beans.length === 0 && !isTestMode ? (
           <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-            <p>Please add a coffee bean first.</p>
+            <p>Please add a coffee bean first{isDevelopment && ', or enable Test Mode for quick testing'}.</p>
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div className="input-group" style={{ flex: 1 }}>
-                <label className="input-label">Select Bean</label>
-                <select className="input-field" value={selectedBeanId} onChange={handleBeanChange}>
-                  {beans.map(b => (
-                    <option key={b.id} value={b.id}>{b.name} ({b.roastLevel})</option>
-                  ))}
-                </select>
+            {!isTestMode && (
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label className="input-label">Select Bean</label>
+                  <select className="input-field" value={selectedBeanId} onChange={handleBeanChange}>
+                    {beans.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} ({b.roastLevel})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group" style={{ width: '100px' }}>
+                  <label className="input-label">Weight (g)</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={coffeeWeight}
+                    onChange={handleWeightChange}
+                    min="5"
+                    max="50"
+                  />
+                </div>
               </div>
-              <div className="input-group" style={{ width: '100px' }}>
-                <label className="input-label">Weight (g)</label>
-                <input 
-                  type="number" 
-                  className="input-field" 
-                  value={coffeeWeight} 
-                  onChange={handleWeightChange}
-                  min="5"
-                  max="50"
-                />
-              </div>
-            </div>
+            )}
 
             {recipe && (
               <div className="glass-panel" style={{ padding: '20px', marginTop: '20px' }}>
-                <h3 style={{ margin: '0 0 10px 0' }}>{recipe.title}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                  <h3 style={{ margin: 0 }}>{recipe.title}</h3>
+                  {isTestMode && (
+                    <span style={{
+                      fontSize: '0.7rem',
+                      padding: '3px 8px',
+                      background: 'var(--color-primary)',
+                      color: '#1a1a1a',
+                      borderRadius: '10px',
+                      fontWeight: 'bold'
+                    }}>TEST MODE</span>
+                  )}
+                </div>
                 <p style={{ fontSize: '0.85rem', marginBottom: '20px' }}>{recipe.profile}</p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
@@ -336,10 +406,55 @@ const Brew: React.FC = () => {
   const handleShareClick = async () => {
     if (!shareCardRef.current) return;
     setIsGeneratingShare(true);
+
+    const canvasReplacements: { parent: Node; canvas: HTMLCanvasElement; img: HTMLImageElement }[] = [];
+
     try {
-      // Use html-to-image to snapshot the hidden shareCardRef
-      const dataUrl = await toJpeg(shareCardRef.current, { quality: 0.95, style: { background: '#121212' } });
-      
+      // 1. Wait for all images to load completely
+      const images = shareCardRef.current.querySelectorAll('img');
+      await Promise.all(
+        Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve(); // Skip failed images
+            setTimeout(() => resolve(), 5000); // 5s timeout
+          });
+        })
+      );
+
+      // 2. Convert canvas elements to images (Chart.js uses canvas)
+      const canvases = shareCardRef.current.querySelectorAll('canvas');
+      canvases.forEach(canvas => {
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        const computedStyle = window.getComputedStyle(canvas);
+        img.style.cssText = computedStyle.cssText;
+        img.style.width = computedStyle.width;
+        img.style.height = computedStyle.height;
+        if (canvas.parentNode) {
+          canvas.parentNode.replaceChild(img, canvas);
+          canvasReplacements.push({ parent: canvas.parentNode, canvas, img });
+        }
+      });
+
+      // 3. Small delay to ensure DOM updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 4. Generate the share image
+      const dataUrl = await toJpeg(shareCardRef.current, {
+        quality: 0.95,
+        pixelRatio: 2,
+        style: { background: '#121212' },
+        cacheBust: true,
+      });
+
+      // 5. Restore canvas elements
+      canvasReplacements.forEach(({ parent, canvas, img }) => {
+        parent.replaceChild(canvas, img);
+      });
+
+      // 6. Share or download
       if (navigator.share) {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -356,6 +471,12 @@ const Brew: React.FC = () => {
       }
     } catch (err) {
       console.error('Share failed', err);
+      // Restore canvases even if there's an error
+      canvasReplacements.forEach(({ parent, canvas, img }) => {
+        if (parent.contains(img)) {
+          parent.replaceChild(canvas, img);
+        }
+      });
     } finally {
       setIsGeneratingShare(false);
     }

@@ -30,6 +30,8 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[generate-image] Error:', error);
+    console.error('[generate-image] Error stack:', error.stack);
+    console.error('[generate-image] Request body:', { origin, tastingNotes });
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }

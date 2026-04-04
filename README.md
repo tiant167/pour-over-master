@@ -47,20 +47,27 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
-3. **Start the local Dev Server (Vercel CLI required):**
-   Because this project uses Vercel Serverless Functions to securely proxy AI requests, you must run it using the Vercel CLI.
+3. **Start the local Dev Server:**
+
+   **Option A: Vite only (Frontend only, no AI features)**
+   ```bash
+   npm run dev
+   ```
+   *App available at `http://localhost:5173`*
+
+   **Option B: Vercel CLI (Full stack with AI features)**
    ```bash
    # Install Vercel CLI globally if you haven't already
    npm i -g vercel
-   
+
    # Link the project to your Vercel account
    vercel login
    vercel link
-   
+
    # Start the combined Frontend + Serverless Backend
    npm run dev:vercel
    ```
-   *Your app will be available at `http://localhost:3000`.*
+   *App available at `http://localhost:3000`*
 
 ## 📱 Installation on Mobile (PWA)
 
