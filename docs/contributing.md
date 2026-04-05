@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Thank you for your interest in contributing to Pour-Over Master! This document provides guidelines for development workflow and contribution.
+This document explains how to work on Pour-Over Master without fighting the local setup or drifting away from the current app architecture.
 
 ## Table of Contents
 
@@ -16,148 +16,114 @@ Thank you for your interest in contributing to Pour-Over Master! This document p
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
-- Google Gemini API key (for AI features)
+- Node.js 18+
+- npm
+- A Google Gemini API key for AI-backed flows
+- Vercel CLI if you want to run the local serverless functions
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone <repo-url>
 cd pour-over-master
-
-# Install dependencies
 npm install
-
-# Configure environment
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+```
 
-# Start development server
+Add your Gemini key to `.env`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### Running the App
+
+Frontend-only development:
+
+```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+- Runs Vite on `http://localhost:5173`
+- Good for UI-only work
+- `/api` requests are proxied to `http://localhost:3000`, so local AI features will fail unless the Vercel dev server is also running
+
+Full-stack local development:
+
+```bash
+npm run dev:vercel
+```
+
+- Runs the app and serverless functions on `http://localhost:3000`
+- Use this when testing bean recognition, AI recipe generation, or AI image generation
 
 ## Project Structure
 
 ```
 pour-over-master/
 ├── api/                    # Vercel serverless functions
-│   ├── recognize-bean.js   # Bean image recognition
-│   ├── generate-recipe.js  # Recipe generation
-│   └── generate-image.js   # AI image generation
+├── docs/                   # Project documentation
+├── public/                 # Static assets
 ├── src/
-│   ├── pages/             # Main application pages
-│   ├── components/        # Reusable UI components
-│   ├── utils/             # Utility functions and services
-│   ├── App.tsx           # Root component
-│   └── main.tsx          # Entry point
-├── docs/                  # Documentation
-├── public/               # Static assets
-├── CLAUDE.md            # Documentation map
-└── README.md            # Project overview
+│   ├── components/         # Shared UI
+│   ├── pages/              # Route-level screens
+│   └── utils/              # Storage, AI, recipe logic
+├── CLAUDE.md               # Documentation map
+├── README.md               # Project overview
+└── vite.config.ts          # Vite config and /api proxy
 ```
 
 ## Development Workflow
 
 ### 1. Create a Branch
 
-```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/bug-description
-```
+Use a descriptive branch name. In this repo, Codex-created branches typically use a `codex/` prefix, but any clear branch name is fine.
 
 ### 2. Make Changes
 
-- Follow the existing code style
-- Write clear, descriptive commit messages
-- Test your changes thoroughly
+- Preserve the current mobile-first design
+- Keep desktop behavior in mind: desktop users see a landing page, not the app shell
+- Reuse the existing utilities in `src/utils/` when possible
+- Update docs when behavior, setup, or architecture changes
 
-### 3. Test Locally
+### 3. Validate Locally
 
 ```bash
-# Run linting
 npm run lint
-
-# Test the build
 npm run build
-
-# Test with Vercel CLI (for API functions)
-npm run dev:vercel
 ```
+
+Run `npm run dev:vercel` as needed for AI-backed flows.
 
 ### 4. Commit and Push
 
 ```bash
-git add .
-git commit -m "feat: add new feature description"
-git push origin feature/your-feature-name
+git add <files>
+git commit -m "fix: short description"
+git push origin <branch-name>
 ```
 
 ## Code Style
 
 ### TypeScript
 
-- Use explicit types for function parameters and return values
-- Avoid `any` when possible
-- Use interfaces for object shapes
+- Prefer explicit interfaces and types
+- Avoid `any` unless the surrounding code already relies on it
+- Keep shared types close to the utilities or modules that own them
 
-```typescript
-// Good
-interface Bean {
-  id: string;
-  name: string;
-  origin?: string;
-}
+### React
 
-function getBeanById(id: string): Promise<Bean | undefined> {
-  // implementation
-}
+- Use functional components and hooks
+- Keep route-specific logic in page components
+- Extract shared logic into utilities when it is reused across files
+- Lazy-load top-level pages the same way `App.tsx` already does
 
-// Avoid
-function getBeanById(id: any): any {
-  // implementation
-}
-```
+### Styling
 
-### React Components
-
-- Use functional components with hooks
-- Keep components focused on a single responsibility
-- Extract reusable logic into custom hooks
-
-```typescript
-// Component structure
-interface Props {
-  bean: Bean;
-  onDelete: (id: string) => void;
-}
-
-export const BeanCard: React.FC<Props> = ({ bean, onDelete }) => {
-  // Component logic
-  
-  return (
-    // JSX
-  );
-};
-```
-
-### CSS/Styling
-
-- Use CSS variables for theming (defined in `src/index.css`)
-- Follow BEM-like naming for custom classes
-- Prefer inline styles for dynamic values
-
-```css
-/* Use CSS variables */
-.glass-panel {
-  background: var(--color-surface);
-  backdrop-filter: var(--glass-blur);
-}
-```
+- Use the CSS variable palette from [`src/index.css`](/Users/haotianchai/Documents/workspace/pour-over-master/src/index.css)
+- Keep shared classes in CSS
+- Use inline styles for dynamic values and one-off layout adjustments
+- Preserve the current visual language unless the change is intentionally redesigning part of the app
 
 ### Naming Conventions
 
@@ -167,126 +133,75 @@ export const BeanCard: React.FC<Props> = ({ bean, onDelete }) => {
 | Utilities | camelCase | `beanService.ts` |
 | Constants | UPPER_SNAKE | `TEST_RECIPE` |
 | Interfaces | PascalCase | `BrewRecipe` |
-| CSS Variables | kebab-case | `--color-primary` |
 
 ## Testing Your Changes
 
+### Recommended Checks
+
+1. Run `npm run build`
+2. Exercise the changed UI in a mobile-sized viewport
+3. If you touched AI flows, run `npm run dev:vercel`
+4. If you touched the Brew page, test the finished/share flow
+5. If you touched install/update/onboarding behavior, test on a real mobile browser when possible
+
 ### Using Test Mode
 
-For rapid iteration, use Test Mode (10-second brew cycle):
+The Brew page exposes a development-only Test Mode that runs a 10-second recipe. Use it for share-flow or timer UI iteration.
 
-1. Ensure you're running in development mode (`npm run dev`)
-2. Go to Brew page
-3. Toggle "⚡ Test Mode" switch (only visible in development)
-4. Start brewing
+### Testing With a Manual Bean
 
-### Testing Share Images
+1. Open the Beans page
+2. Click **Add**
+3. Enter sample data such as:
 
-When modifying share image generation:
+   ```text
+   Name: Ethiopia Yirgacheffe
+   Origin: Ethiopia
+   Roast Level: Medium
+   Processing Method: Washed
+   ```
 
-1. Complete a brew (use Test Mode)
-2. Click "Share Profile"
-3. Verify the generated image contains:
-   - Chart curve
-   - All text elements
-   - QR code
-   - Proper styling
+4. Save the bean
+5. Verify it appears in the list and can be opened in Brew
 
 ### Testing on Real Devices
 
-For PWA-related changes:
-
-1. Build for production: `npm run build`
-2. Serve locally: `npx serve dist`
-3. Access from mobile device on same network
-4. Test "Add to Home Screen" functionality
-
-### Browser Testing Matrix
-
-| Browser | Minimum Version | Priority |
-|---------|-----------------|----------|
-| Chrome | 90+ | High |
-| Safari (iOS) | 14+ | High |
-| Safari (macOS) | 14+ | Medium |
-| Firefox | 88+ | Medium |
-| Edge | 90+ | Low |
+1. Run `npm run build`
+2. Run `npm run preview`
+3. Open the preview URL from a phone on the same network
+4. Verify install behavior, bottom navigation, brewing flow, and share flow
 
 ## Submitting Changes
 
-### Pull Request Process
+### Pull Requests
 
-1. **Update documentation** if needed
-2. **Add tests** for new features
-3. **Ensure CI passes** (lint, build)
-4. **Fill out PR template** with:
-   - Description of changes
-   - Screenshots (for UI changes)
-   - Testing performed
+Before opening a PR:
 
-### PR Title Format
+1. Make sure the docs match the code
+2. Summarize what changed
+3. Include screenshots for UI changes when helpful
+4. List the testing you ran
 
+### Commit Message Examples
+
+```text
+fix: stabilize Safari share capture
+docs: refresh local development guide
+refactor: simplify brew share rendering
 ```
-feat: add new feature
-ci: update CI configuration
-docs: update documentation
-fix: fix bug in share image
-perf: improve performance
-refactor: restructure code
-style: fix formatting
-test: add tests
-```
-
-### Review Process
-
-- All PRs require at least one review
-- Address review comments promptly
-- Squash commits before merge if requested
 
 ## Common Tasks
 
 ### Adding a New Page
 
-1. Create component in `src/pages/NewPage.tsx`
-2. Add route in `src/App.tsx`
-3. Add navigation item in `BottomNav`
-4. Update documentation
+1. Create the page in `src/pages/`
+2. Add a lazy route in [`src/App.tsx`](/Users/haotianchai/Documents/workspace/pour-over-master/src/App.tsx)
+3. Add a bottom-nav item if the page belongs in the mobile app shell
+4. Update docs if the workflow changes
 
 ### Adding an API Endpoint
 
-1. Create file in `api/` directory
-2. Follow existing pattern for error handling
-3. Add rate limiting if using AI
-4. Update architecture docs
-
-### Modifying Storage Schema
-
-1. Update interfaces in `src/utils/beanService.ts` or `storage.ts`
-2. Consider migration strategy for existing data
-3. Update type definitions
-
-### Debugging Tips
-
-```typescript
-// Enable verbose logging
-localStorage.setItem('debug', 'true');
-
-// Clear all app data
-await localforage.clear();
-
-// Check IndexedDB contents
-await localforage.keys();
-await localforage.getItem('beans');
-```
-
-## Questions?
-
-- Check [architecture.md](./architecture.md) for system design
-- Check [testing.md](./testing.md) for testing strategies
-- Review [CLAUDE.md](../CLAUDE.md) for documentation map
-
-## Code of Conduct
-
-- Be respectful and constructive
-- Focus on the code, not the person
-- Help others learn and grow
-- Follow the project's coding standards
+1. Add a new file in `api/`
+2. Follow the existing method validation and JSON error response pattern
+3. Keep secrets server-side
+4. Update docs if the endpoint changes setup or architecture assumptions

@@ -1,174 +1,148 @@
 # Testing Guide
 
-This document describes the testing strategies and tools available for the Pour-Over Master project.
+This document covers the practical testing workflows for Pour-Over Master.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [Test Mode](#test-mode)
 - [Manual Testing](#manual-testing)
-- [Automated Testing with Chrome DevTools MCP](#automated-testing-with-chrome-devtools-mcp)
-- [Testing Share Image Generation](#testing-share-image-generation)
+- [Share Image Testing](#share-image-testing)
 - [Troubleshooting](#troubleshooting)
 
 ## Quick Start
 
 ```bash
-# Start the development server
+# Frontend-only development
 npm run dev
 
-# The app will be available at http://localhost:5173
+# Full-stack local development with serverless functions
+npm run dev:vercel
 ```
+
+Use `npm run dev` for UI-only work. Use `npm run dev:vercel` when you need local `/api` routes for Gemini-backed features.
 
 ## Test Mode
 
-For rapid development and testing, use **Test Mode** to run a shortened 10-second brew instead of the full ~4 minute cycle.
+The Brew page includes a development-only Test Mode that runs a 10-second recipe instead of a full-length brew.
 
-> **Note:** Test Mode is only available in development environment (`npm run dev`). It is automatically hidden in production builds.
+> Test Mode is only rendered in development builds via `import.meta.env.DEV`.
 
 ### Enabling Test Mode
 
-1. Start the development server: `npm run dev`
-2. Navigate to the **Brew** page
-3. Toggle the **⚡ Test Mode** switch in the top-right corner
-4. The brew cycle will be shortened to:
-   - **Bloom**: 3 seconds
-   - **Pour**: 4 seconds
-   - **Wait**: 3 seconds
+1. Start a development server
+2. Open the Brew page
+3. Toggle **Test Mode**
+4. Start brewing
 
-### When to Use Test Mode
+The test recipe is:
+
+- **Bloom**: 3 seconds
+- **Pour**: 4 seconds
+- **Wait**: 3 seconds
+
+### When to Use It
 
 | Scenario | Recommended Mode |
 |----------|------------------|
-| Testing share image generation | Test Mode ✅ (dev only) |
-| Testing UI flow and navigation | Test Mode ✅ (dev only) |
-| Testing timer accuracy | Normal Mode |
-| Testing recipe scaling | Normal Mode |
-| End-to-user experience testing | Normal Mode |
+| Share image work | Test Mode |
+| Finished-screen UI tweaks | Test Mode |
+| Timer polish | Test Mode |
+| Realistic recipe scaling validation | Normal mode |
+| End-user feel checks | Normal mode |
 
 ## Manual Testing
 
-### Adding a Test Bean
+### Add a Manual Bean
 
-For testing with real bean data (origin, tasting notes, AI image generation):
-
-1. Go to **Beans** page
+1. Open **Beans**
 2. Click **Add**
-3. Enter test data:
-   ```
+3. Enter sample data:
+
+   ```text
    Name: Ethiopia Yirgacheffe
    Origin: Ethiopia
    Roast Level: Medium
-   Processing: Washed
+   Processing Method: Washed
    ```
-4. Click **Save Bean**
 
-### Testing Share Image Feature
+4. Save the bean
+5. Confirm the bean appears in the list
 
-1. Complete a brew (using Test Mode for speed)
-2. Wait for the **finished** screen
-3. Click **Share Profile**
-4. Verify the generated image contains:
-   - Title and completion badge
-   - Brew data (Ratio, Temperature, Time)
-   - Water volume curve chart
-   - QR code
-   - Brand footer
+### Validate Core Flows
 
-## Automated Testing with Chrome DevTools MCP
+1. Add or recognize a bean
+2. Start a brew from the Beans page or Brew page
+3. Finish the brew
+4. Confirm a history entry is created
+5. Open History and verify the bean metadata resolves correctly
 
-The Chrome DevTools MCP plugin can be used for automated browser testing.
+### Mobile-Specific Checks
 
-### Setup
+1. Use a mobile viewport or a real phone
+2. Confirm onboarding only appears once
+3. Confirm the install prompt does not overlap onboarding incorrectly
+4. Confirm bottom navigation stays usable across pages
 
-```bash
-# Install the plugin (if not already installed)
-claude /plugin install chrome-devtools-mcp
-claude /reload-plugins
-```
+## Share Image Testing
 
-### Example Test Flow
-
-```typescript
-// Navigate to the app
-await navigate_page({ type: 'url', url: 'http://localhost:5173' });
-
-// Emulate mobile device
-await emulate({ viewport: '390x844x3,mobile,touch' });
-
-// Take a screenshot for verification
-await take_screenshot();
-
-// Click through onboarding
-const snapshot = await take_snapshot();
-const getStartedBtn = findButton(snapshot, 'Get Started');
-await click({ uid: getStartedBtn.uid });
-```
-
-## Testing Share Image Generation
-
-The share image generation uses `html-to-image` to capture the DOM. This is a critical feature that requires special handling for canvas elements.
+The Brew page’s share flow is more complex than a plain DOM screenshot, so it deserves focused checks.
 
 ### How It Works
 
-1. **Wait for images**: All `<img>` elements must be fully loaded (`img.complete === true`)
-2. **Convert canvas to image**: Chart.js charts are rendered on canvas, which `html-to-image` cannot directly capture. The solution:
-   ```typescript
-   const img = document.createElement('img');
-   img.src = canvas.toDataURL('image/png');
-   canvas.parentNode.replaceChild(img, canvas);
-   ```
-3. **Generate**: Call `toJpeg()` with `pixelRatio: 2` for high quality
-4. **Restore**: Replace the temporary images back to original canvases
+1. After the brew finishes, the app starts pre-rendering the share image
+2. The share card waits for image assets to load and decode
+3. Chart canvases are replaced with generated `<img>` elements
+4. The app waits for a couple of paint frames
+5. `html-to-image` generates a JPEG with `pixelRatio: 2`
+6. The original canvases are restored
+7. Share reuses the pre-rendered image when possible
 
-### Testing Checklist
+Example conversion pattern:
 
-- [ ] Canvas chart renders correctly in share image
-- [ ] AI-generated origin image renders correctly
-- [ ] Text and data are legible
-- [ ] QR code is scannable
-- [ ] Image quality is acceptable (not blurry)
+```typescript
+const img = document.createElement('img');
+img.src = canvas.toDataURL('image/png');
+canvas.parentNode.replaceChild(img, canvas);
+```
+
+### Checklist
+
+- [ ] Share button becomes available after the finished screen loads
+- [ ] Chart appears in the exported image
+- [ ] Brew metadata is visible and legible
+- [ ] QR code is present
+- [ ] AI watercolor artwork appears when generation succeeds
+- [ ] Fallback loading state looks acceptable while artwork is still pending
+- [ ] The UI remains stable after sharing
 
 ### Common Issues
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Blank chart | Canvas not converted to image | Check `handleShareClick` converts canvas elements |
-| Missing AI image | Image not fully loaded | Ensure `img.complete` check with timeout |
-| Blurry output | Low pixel ratio | Use `pixelRatio: 2` in `toJpeg` options |
-| Broken UI after share | Canvas not restored | Ensure finally block restores canvases |
+| Issue | Likely Cause | What to Check |
+|-------|--------------|---------------|
+| Blank chart | Canvas swap did not happen | Review the canvas replacement logic in `Brew.tsx` |
+| Missing artwork | Image not ready yet | Review image readiness waits and retry behavior |
+| Blurry export | Low capture resolution | Confirm `pixelRatio: 2` is still used |
+| Broken share card after export | Canvas restore path failed | Confirm the `finally` restore logic still runs |
 
 ## Troubleshooting
 
-### Dev Server Won't Start
-
-```bash
-# Check if port is in use
-lsof -i :5173
-
-# Kill existing process or use different port
-npm run dev -- --port 3000
-```
-
-### AI Image Generation Fails
+### AI Features Do Not Work Locally
 
 - Verify `GEMINI_API_KEY` is set in `.env`
-- Check browser console for API errors
-- Note: Image generation is rate-limited
+- Make sure you are running `npm run dev:vercel`
+- Check the browser console and Vercel dev logs for API errors
 
-### Share Button Does Nothing
+### Share Button Fails
 
-- Check browser console for JavaScript errors
-- Verify `html-to-image` is installed: `npm ls html-to-image`
-- Test in incognito mode to rule out extension conflicts
+- Check the browser console for share diagnostics
+- Verify `html-to-image` is installed
+- Retry after the finished screen has had time to prepare the share preview
 
-## Best Practices
+### Reset Local App State
 
-1. **Use Test Mode** when testing non-timing features (development environment only)
-2. **Clear IndexedDB** between test sessions if testing storage:
-   ```javascript
-   // In browser console
-   await localforage.clear()
-   ```
-3. **Test on real devices** for PWA functionality (add to home screen, offline mode)
-4. **Verify responsive design** at different screen sizes (320px - 428px width)
+If you need a clean slate while testing storage:
+
+```javascript
+await localforage.clear()
+```

@@ -12,7 +12,7 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
 
 **Pour-Over Master flips this paradigm using Google Gemini AI:**
 
-1. **Zero Data Entry (Vision AI):** Instead of typing out origin, altitude, and processing methods, simply **take a photo** of your coffee bean bag. Gemini 2.5 Flash Vision instantly reads the label, extracts the roast level, tasting notes, and origin.
+1. **Zero Data Entry (Vision AI):** Instead of typing out origin and processing details, simply **take a photo** of your coffee bean bag. Gemini reads the label and extracts the roast level, tasting notes, origin, and a starter recipe formula.
 2. **Generative Recipes:** You don't search for recipes anymore. The AI acts as a digital World Barista Champion. Based on the specific density and solubility characteristics of your bean (e.g., Light Roast Washed Ethiopian vs. Dark Roast Natural Brazilian), the AI **generates a mathematically optimized recipe formula on the fly**—calculating the perfect bloom time, water ratios, and pouring intervals.
 3. **Aesthetic Sharing:** After a successful brew, the app uses Gemini Imagen 3 to generate a dreamy, ethereal watercolor painting inspired by the tasting notes of your coffee, creating an abstract and artistic "Coffee Card" ready for social media sharing.
 
@@ -21,7 +21,7 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
 - **AI Bean Recognition:** One-click camera integration to digitize your coffee bean collection.
 - **Auto-Calculated Brew Formulas:** Dynamic recipe generation that adapts to your specific dose (e.g., 15g vs 20g) while maintaining fluid dynamics integrity.
 - **Smart Brewing HUD:** A hyper-focused, distraction-free visual timer that guides your pours second-by-second.
-- **Visual Analytics:** Beautiful, interactive charts (Chart.js) tracking your brewing history and flavor note trends over time.
+- **Visual Analytics:** Beautiful, interactive brew charts (Chart.js) for recipes and share cards.
 - **Secure Architecture:** Frontend built with Vite + React + TypeScript, backed by **Vercel Serverless Functions** to keep your AI Prompts and API Keys strictly server-side.
 - **Offline First (PWA):** Installs directly to your iOS/Android home screen. All bean data and brewing history are kept locally on your device via IndexedDB (`localforage`).
 
@@ -31,7 +31,7 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
 - **Styling:** Vanilla CSS (Glassmorphism UI, Dark Theme)
 - **Data Persistence:** IndexedDB via `localforage`
 - **PWA Capabilities:** `vite-plugin-pwa` (Service Workers, Manifest, Auto-Updates)
-- **AI Engine:** Google Gemini SDK (`gemini-3.1-flash-lite-preview` for vision/text, `gemini-3.1-flash-image-preview` for image generation)
+- **AI Engine:** Google Gemini SDK (`gemini-3.1-flash-lite-preview` for recognition/recipe text, `gemini-3.1-flash-image-preview` for image generation)
 - **Backend / Deployment:** Vercel Serverless Functions (`api/` directory)
 
 ## 💻 Local Development
@@ -47,12 +47,14 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
-3. **Start the local Dev Server:**
+3. **Start the local dev server:**
 
-   **Option A: Vite only (Frontend only, no AI features)**
+   **Option A: Vite only**
    ```bash
    npm run dev
    ```
+   This is useful for UI work, but `/api` requests are proxied to `http://localhost:3000`, so AI features will not work unless you also run the Vercel dev server.
+
    *App available at `http://localhost:5173`*
 
    **Option B: Vercel CLI (Full stack with AI features)**
@@ -60,14 +62,19 @@ Traditional pour-over apps (like *Filtru*, *Brew*, or *Acaia*) operate on a **st
    # Install Vercel CLI globally if you haven't already
    npm i -g vercel
 
-   # Link the project to your Vercel account
+   # Log in if needed
    vercel login
-   vercel link
 
    # Start the combined Frontend + Serverless Backend
    npm run dev:vercel
    ```
    *App available at `http://localhost:3000`*
+
+## Notes on Runtime Behavior
+
+- The mobile app is the primary experience. Desktop visitors are shown a landing page with a QR code that points them back to the mobile app.
+- Brewing data, beans, onboarding state, install prompt dismissal, and the client-side AI rate limit are stored locally in IndexedDB via `localforage`.
+- The app includes a development-only **Test Mode** on the Brew page for a 10-second brew cycle to speed up UI and share-flow testing.
 
 ## 📱 Installation on Mobile (PWA)
 

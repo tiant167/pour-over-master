@@ -18,7 +18,7 @@ Welcome to the Pour-Over Master project! This document serves as your starting p
 - AI-powered coffee bean recognition using Google Gemini Vision
 - Dynamic recipe generation based on bean characteristics
 - Smart brewing timer with visual guidance
-- Shareable brew cards with AI-generated watercolor artwork
+- Shareable brew cards with AI-generated artwork
 
 ## Architecture Highlights
 
@@ -53,12 +53,6 @@ Welcome to the Pour-Over Master project! This document serves as your starting p
 - **AI Integration**: Google Gemini SDK
 - **Backend**: Vercel Serverless Functions
 - **PWA**: vite-plugin-pwa
-
-## Current Notes
-
-- `npm run dev` is useful for frontend-only work, but local AI features require `npm run dev:vercel`.
-- The mobile app is the primary product experience; desktop users are shown a landing page with a QR code.
-- The Brew page includes a development-only Test Mode for a 10-second brew cycle.
 
 ## Need Help?
 
