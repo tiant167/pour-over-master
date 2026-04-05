@@ -31,6 +31,8 @@ const TEST_RECIPE: BrewRecipe = {
 // Check if running in development mode
 const isDevelopment = import.meta.env.DEV;
 const SHARE_ASSET_TIMEOUT_MS = 5000;
+const SHARE_PRERENDER_MAX_ATTEMPTS = 3;
+const SHARE_PRERENDER_RETRY_DELAY_MS = 600;
 
 const Brew: React.FC = () => {
   const location = useLocation();
@@ -53,7 +55,15 @@ const Brew: React.FC = () => {
   const [aigcImageUrl, setAigcImageUrl] = useState<string>('');
 
   const [isGeneratingShare, setIsGeneratingShare] = useState(false);
+  const [shareImageDataUrl, setShareImageDataUrl] = useState<string>('');
+  const [isPreparingSharePreview, setIsPreparingSharePreview] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const sharePreviewRequestIdRef = useRef(0);
+  const isTestModeRef = useRef(isTestMode);
+
+  useEffect(() => {
+    isTestModeRef.current = isTestMode;
+  }, [isTestMode]);
 
   useEffect(() => {
     loadBeans();
@@ -75,7 +85,7 @@ const Brew: React.FC = () => {
   const loadBeans = async () => {
     const b = await getBeans();
     setBeans(b);
-    if (isTestMode) {
+    if (isTestModeRef.current) {
       // Use quick test recipe in test mode
       setRecipe(TEST_RECIPE);
     } else if (b.length > 0) {
@@ -290,6 +300,93 @@ const Brew: React.FC = () => {
     });
   };
 
+  const renderShareImage = async () => {
+    if (!shareCardRef.current) {
+      throw new Error('Share card is not mounted');
+    }
+
+    const root = shareCardRef.current;
+    let canvasReplacements: { parent: HTMLElement; canvas: HTMLCanvasElement; img: HTMLImageElement }[] = [];
+
+    try {
+      await waitForImagesToDecode(root, 'shareCardImage');
+      await waitForNextPaint(2);
+
+      canvasReplacements = await replaceCanvasesWithImages(root);
+      await waitForNextPaint(2);
+
+      return await toJpeg(root, {
+        quality: 0.95,
+        pixelRatio: 2,
+        style: { background: '#121212' },
+        cacheBust: true,
+      });
+    } finally {
+      restoreCanvasReplacements(canvasReplacements);
+    }
+  };
+
+  const shareDataUrl = async (dataUrl: string) => {
+    if (navigator.share) {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], 'my-brew.jpg', { type: 'image/jpeg' });
+      await navigator.share({
+        title: 'My Pour-Over Brew',
+        files: [file]
+      });
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.download = `brew-${Date.now()}.jpg`;
+    link.href = dataUrl;
+    link.click();
+  };
+
+  useEffect(() => {
+    if (brewState !== 'finished' || !recipe || !shareCardRef.current) return;
+
+    const requestId = sharePreviewRequestIdRef.current + 1;
+    sharePreviewRequestIdRef.current = requestId;
+    let cancelled = false;
+
+    const prepareSharePreview = async () => {
+      setIsPreparingSharePreview(true);
+
+      for (let attempt = 1; attempt <= SHARE_PRERENDER_MAX_ATTEMPTS; attempt += 1) {
+        if (cancelled || sharePreviewRequestIdRef.current !== requestId) return;
+
+        try {
+          console.log('[share] Pre-rendering share image', { attempt });
+          const dataUrl = await renderShareImage();
+
+          if (cancelled || sharePreviewRequestIdRef.current !== requestId) return;
+
+          setShareImageDataUrl(dataUrl);
+          console.log('[share] Share image pre-rendered successfully', { attempt });
+          return;
+        } catch (error) {
+          console.warn('[share] Share image pre-render attempt failed', { attempt, error });
+
+          if (attempt < SHARE_PRERENDER_MAX_ATTEMPTS) {
+            await new Promise((resolve) => window.setTimeout(resolve, SHARE_PRERENDER_RETRY_DELAY_MS));
+          }
+        }
+      }
+    };
+
+    prepareSharePreview().finally(() => {
+      if (!cancelled && sharePreviewRequestIdRef.current === requestId) {
+        setIsPreparingSharePreview(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brewState, recipe, aigcImageUrl, time]);
+
   const handleStart = () => {
     if (audioContextRef.current?.state === 'suspended') {
       audioContextRef.current.resume(); // Must be resumed on user interaction
@@ -314,6 +411,8 @@ const Brew: React.FC = () => {
       
     setBrewState('countdown');
     setCountdown(3);
+    setShareImageDataUrl('');
+    setIsPreparingSharePreview(false);
     playBeep(440, 'sine', 0.2); // First countdown beep
   };
 
@@ -342,6 +441,8 @@ const Brew: React.FC = () => {
   const handleStop = () => {
     setIsRunning(false);
     setTime(0);
+    setShareImageDataUrl('');
+    setIsPreparingSharePreview(false);
     setBrewState('setup');
   };
 
@@ -363,6 +464,14 @@ const Brew: React.FC = () => {
       await setItem(StorageKeys.HISTORY, histories);
     }
   };
+
+  useEffect(() => {
+    if (brewState !== 'finished') {
+      sharePreviewRequestIdRef.current += 1;
+      setShareImageDataUrl('');
+      setIsPreparingSharePreview(false);
+    }
+  }, [brewState]);
 
   if (brewState === 'setup') {
     return (
@@ -507,41 +616,12 @@ const Brew: React.FC = () => {
     if (!shareCardRef.current) return;
     setIsGeneratingShare(true);
 
-    let canvasReplacements: { parent: HTMLElement; canvas: HTMLCanvasElement; img: HTMLImageElement }[] = [];
-
     try {
-      const root = shareCardRef.current;
-      console.log('[share] Preparing share capture');
-
-      await waitForImagesToDecode(root, 'shareCardImage');
-      await waitForNextPaint(2);
-
-      canvasReplacements = await replaceCanvasesWithImages(root);
-      await waitForNextPaint(2);
-
-      const dataUrl = await toJpeg(shareCardRef.current, {
-        quality: 0.95,
-        pixelRatio: 2,
-        style: { background: '#121212' },
-        cacheBust: true,
-      });
-
-      restoreCanvasReplacements(canvasReplacements);
-
-      if (navigator.share) {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], 'my-brew.jpg', { type: 'image/jpeg' });
-        await navigator.share({
-          title: 'My Pour-Over Brew',
-          files: [file]
-        });
-      } else {
-        const link = document.createElement('a');
-        link.download = `brew-${Date.now()}.jpg`;
-        link.href = dataUrl;
-        link.click();
+      const dataUrl = shareImageDataUrl || await renderShareImage();
+      if (!shareImageDataUrl) {
+        setShareImageDataUrl(dataUrl);
       }
+      await shareDataUrl(dataUrl);
     } catch (err) {
       console.error('Share failed', err);
       console.error('[share] Share diagnostics', {
@@ -558,7 +638,6 @@ const Brew: React.FC = () => {
           ? shareCardRef.current.getAnimations({ subtree: true }).length > 0
           : false,
       });
-      restoreCanvasReplacements(canvasReplacements);
     } finally {
       setIsGeneratingShare(false);
     }
@@ -674,7 +753,11 @@ const Brew: React.FC = () => {
              onClick={handleShareClick}
              disabled={isGeneratingShare}
            >
-             {isGeneratingShare ? 'Preparing share...' : <><Share2 size={18} /> Share Profile</>}
+             {isGeneratingShare
+               ? 'Sharing...'
+               : isPreparingSharePreview && !shareImageDataUrl
+                 ? 'Preparing share...'
+                 : <><Share2 size={18} /> Share Profile</>}
            </button>
         </div>
         
